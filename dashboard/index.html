@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildlife Camera Monitoring System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border-bottom: 3px solid #ff6b35;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+            font-weight: 400;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 120px);
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .sidebar {
+            width: 350px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .camera-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid #3498db;
+            transition: all 0.3s ease;
+        }
+
+        .camera-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .camera-card.rhino-detected {
+            border-left-color: #e74c3c;
+            background: linear-gradient(135deg, #fff 0%, #ffebee 100%);
+        }
+
+        .camera-card.inactive {
+            border-left-color: #95a5a6;
+            opacity: 0.7;
+        }
+
+        .camera-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .camera-status {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-active {
+            background: #27ae60;
+        }
+
+        .status-inactive {
+            background: #95a5a6;
+        }
+
+        .rhino-alert {
+            background: #e74c3c;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .coordinates {
+            color: #7f8c8d;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .map-container {
+            flex-grow: 1;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        #map {
+            height: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            flex: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+
+        .leaflet-popup-content {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0.5rem;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+
+        .popup-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .connection-online {
+            background: #27ae60;
+            color: white;
+        }
+
+        .connection-offline {
+            background: #e74c3c;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <i class="fas fa-video"></i>
+            Wildlife Camera Monitoring System
+        </h1>
+        <div class="subtitle">Real-time monitoring of wildlife cameras and rhino detection alerts</div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <h2>
+                <i class="fas fa-list-ul"></i>
+                Camera Status
+            </h2>
+            
+            <div class="stats-bar">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalCameras">0</div>
+                    <div class="stat-label">Total Cameras</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="activeCameras">0</div>
+                    <div class="stat-label">Active</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="rhinoDetections">0</div>
+                    <div class="stat-label">Rhino Alerts</div>
+                </div>
+            </div>
+
+            <div id="cameraList"></div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+        // Global camera data
+        let cameraData = [];
+        const API_URL = 'http://192.168.88.243:3000/cameras';
+
+        // Initialize map
+        const map = L.map('map').setView([26.5804, 93.1759], 14);
+
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Custom icons
+        const cameraIcon = L.divIcon({
+            html: '<i class="fas fa-video" style="color: #3498db; font-size: 20px;"></i>',
+            iconSize: [30, 30],
+            className: 'custom-div-icon'
+        });
+
+        const inactiveCameraIcon = L.divIcon({
+            html: '<i class="fas fa-video-slash" style="color: #95a5a6; font-size: 20px;"></i>',
+            iconSize: [30, 30],
+            className: 'custom-div-icon'
+        });
+
+        // Function to update statistics
+        function updateStats() {
+            const totalCameras = cameraData.length;
+            const activeCameras = cameraData.filter(camera => camera.status.active).length;
+            const rhinoDetections = cameraData.filter(camera => camera.status.rhino_detection).length;
+
+            document.getElementById('totalCameras').textContent = totalCameras;
+            document.getElementById('activeCameras').textContent = activeCameras;
+            document.getElementById('rhinoDetections').textContent = rhinoDetections;
+        }
+
+        // Function to render camera list
+        function renderCameraList() {
+            const listContainer = document.getElementById('cameraList');
+            listContainer.innerHTML = '';
+
+            cameraData.forEach(camera => {
+                const card = document.createElement('div');
+                card.className = `camera-card ${camera.status.rhino_detection ? 'rhino-detected' : ''} ${!camera.status.active ? 'inactive' : ''}`;
+                
+                card.innerHTML = `
+                    <div class="camera-name">
+                        <i class="fas ${camera.status.active ? 'fa-video' : 'fa-video-slash'}"></i>
+                        ${camera.camera_name}
+                    </div>
+                    <div class="camera-status">
+                        <div class="status-item">
+                            <div class="status-dot ${camera.status.active ? 'status-active' : 'status-inactive'}"></div>
+                            ${camera.status.active ? 'Active' : 'Inactive'}
+                        </div>
+                        <div class="status-item">
+                            <i class="fas ${camera.status.rhino_detection ? 'fa-exclamation-triangle' : 'fa-check-circle'}" 
+                               style="color: ${camera.status.rhino_detection ? '#e74c3c' : '#27ae60'};"></i>
+                            ${camera.status.rhino_detection ? 'Rhino Detected' : 'Normal'}
+                        </div>
+                    </div>
+                    ${camera.status.rhino_detection ? '<div class="rhino-alert"><i class="fas fa-exclamation-triangle"></i> RHINO DETECTION ALERT!</div>' : ''}
+                    <div class="coordinates">
+                        <i class="fas fa-map-marker-alt"></i>
+                        ${camera.location.latitude.toFixed(4)}, ${camera.location.longitude.toFixed(4)}
+                    </div>
+                `;
+                
+                listContainer.appendChild(card);
+            });
+        }
+
+        // Function to add markers to map
+        function addMarkersToMap() {
+            cameraData.forEach(camera => {
+                const lat = camera.location.latitude;
+                const lng = camera.location.longitude;
+                
+                if (camera.status.rhino_detection) {
+                    // Red circle for rhino detection
+                    const rhinoCircle = L.circle([lat, lng], {
+                        color: '#e74c3c',
+                        fillColor: '#e74c3c',
+                        fillOpacity: 0.3,
+                        radius: 200,
+                        weight: 3
+                    }).addTo(map);
+                    
+                    // Pulsing effect
+                    let opacity = 0.3;
+                    let increasing = false;
+                    setInterval(() => {
+                        if (increasing) {
+                            opacity += 0.02;
+                            if (opacity >= 0.6) increasing = false;
+                        } else {
+                            opacity -= 0.02;
+                            if (opacity <= 0.1) increasing = true;
+                        }
+                        rhinoCircle.setStyle({ fillOpacity: opacity });
+                    }, 100);
+                    
+                    rhinoCircle.bindPopup(`
+                        <div class="popup-title">${camera.camera_name}</div>
+                        <div class="popup-status">
+                            <i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i>
+                            <strong style="color: #e74c3c;">RHINO DETECTED!</strong>
+                        </div>
+                        <div class="popup-status">
+                            <div class="status-dot status-active"></div>
+                            Camera Active
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.9rem; color: #7f8c8d;">
+                            Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}
+                        </div>
+                    `);
+                } else {
+                    // Regular camera marker
+                    const marker = L.marker([lat, lng], {
+                        icon: camera.status.active ? cameraIcon : inactiveCameraIcon
+                    }).addTo(map);
+                    
+                    marker.bindPopup(`
+                        <div class="popup-title">${camera.camera_name}</div>
+                        <div class="popup-status">
+                            <div class="status-dot ${camera.status.active ? 'status-active' : 'status-inactive'}"></div>
+                            ${camera.status.active ? 'Camera Active' : 'Camera Inactive'}
+                        </div>
+                        <div class="popup-status">
+                            <i class="fas fa-check-circle" style="color: #27ae60;"></i>
+                            No Rhino Detection
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.9rem; color: #7f8c8d;">
+                            Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}
+                        </div>
+                    `);
+                }
+            });
+        }
+
+        // Function to fetch camera data from API
+        async function fetchCameraData() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                cameraData = data;
+                updateDashboard();
+            } catch (error) {
+                console.error('Error fetching camera data:', error);
+                // Show error message to user
+                showErrorMessage('Failed to fetch camera data. Please check your connection.');
+            }
+        }
+
+        // Function to show error message
+        function showErrorMessage(message) {
+            const listContainer = document.getElementById('cameraList');
+            listContainer.innerHTML = `
+                <div style="
+                    background: #ffebee; 
+                    border: 1px solid #e74c3c; 
+                    border-radius: 8px; 
+                    padding: 1rem; 
+                    text-align: center;
+                    color: #c62828;
+                ">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <br><br>
+                    ${message}
+                    <br><br>
+                    <small>Retrying in 4 seconds...</small>
+                </div>
+            `;
+        }
+
+        // Function to clear all map layers except base layer
+        function clearMapLayers() {
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker || layer instanceof L.Circle) {
+                    map.removeLayer(layer);
+                }
+            });
+        }
+
+        // Function to update entire dashboard
+        function updateDashboard() {
+            updateStats();
+            renderCameraList();
+            clearMapLayers();
+            addMarkersToMap();
+        }
+
+        // Initialize dashboard
+        async function initDashboard() {
+            // Initial fetch
+            await fetchCameraData();
+            
+            // Set up periodic updates every 4 seconds
+            setInterval(fetchCameraData, 4000);
+        }
+
+        // Start the dashboard when page loads
+        window.addEventListener('load', initDashboard);
+
+        // Add custom CSS for map icons
+        const style = document.createElement('style');
+        style.textContent = `
+            .custom-div-icon {
+                background: transparent;
+                border: none;
+                text-align: center;
+                line-height: 30px;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

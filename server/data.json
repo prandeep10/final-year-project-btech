@@ -1,0 +1,37 @@
+{
+  "cameras": [
+    {
+      "camera_name": "Camera1",
+      "status": {
+        "active": true,
+        "rhino_detection": false
+      },
+      "location": {
+        "latitude": 26.5784,
+        "longitude": 93.1714
+      }
+    },
+    {
+      "camera_name": "Camera2",
+      "status": {
+        "active": false,
+        "rhino_detection": false
+      },
+      "location": {
+        "latitude": 26.582269,
+        "longitude": 93.160431
+      }
+    },
+    {
+      "camera_name": "Camera3",
+      "status": {
+        "active": true,
+        "rhino_detection": false
+      },
+      "location": {
+        "latitude": 26.57086,
+        "longitude": 93.159949
+      }
+    }
+  ]
+}
